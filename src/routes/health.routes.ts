@@ -5,7 +5,7 @@ import { redis } from '../config/redis';
 
 const router = Router();
 
-router.get('/health', async (req: Request, res: Response) => {
+router.get('/health', async (_req: Request, res: Response) => {
   const health = {
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -17,7 +17,7 @@ router.get('/health', async (req: Request, res: Response) => {
   return successResponse(res, health);
 });
 
-router.get('/health/ready', async (req: Request, res: Response) => {
+router.get('/health/ready', async (_req: Request, res: Response) => {
   try {
     // Check database connection
     await db.$queryRaw`SELECT 1`;

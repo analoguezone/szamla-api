@@ -11,7 +11,7 @@ import {
   updateStatusSchema,
   updateBillingStatusSchema,
 } from '@validators/organization.validator';
-import { successResponse, errorResponse } from '@utils/responses';
+import { successResponse, errorResponse } from '@utils/response';
 import { ValidationError } from '@utils/errors';
 import { z } from 'zod';
 
@@ -38,7 +38,8 @@ export class OrganizationController {
       successResponse(res, { organization }, 201);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse(
+        errorResponse(
+        
           res,
           'VALIDATION_ERROR',
           'Invalid request data',
@@ -56,7 +57,11 @@ export class OrganizationController {
    */
   async getOrganization(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       const organization = await organizationService.getOrganizationById(id);
 
@@ -77,7 +82,11 @@ export class OrganizationController {
     next: NextFunction
   ): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       const organization = await organizationService.getOrganizationWithNAVCredentials(id);
 
@@ -93,7 +102,11 @@ export class OrganizationController {
    */
   async updateOrganization(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       // Validate request body
       const validatedData = updateOrganizationSchema.parse(req.body);
@@ -104,7 +117,8 @@ export class OrganizationController {
       successResponse(res, { organization });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse(
+        errorResponse(
+        
           res,
           'VALIDATION_ERROR',
           'Invalid request data',
@@ -122,7 +136,11 @@ export class OrganizationController {
    */
   async updateNAVCredentials(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       // Validate request body
       const validatedData = updateNAVCredentialsSchema.parse(req.body);
@@ -136,7 +154,8 @@ export class OrganizationController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse(
+        errorResponse(
+        
           res,
           'VALIDATION_ERROR',
           'Invalid request data',
@@ -155,7 +174,11 @@ export class OrganizationController {
    */
   async testNAVConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       // Get organization with NAV credentials
       const organization = await organizationService.getOrganizationWithNAVCredentials(id);
@@ -186,7 +209,11 @@ export class OrganizationController {
    */
   async addCredits(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       // Validate request body
       const { credits } = addCreditsSchema.parse(req.body);
@@ -200,7 +227,8 @@ export class OrganizationController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse(
+        errorResponse(
+        
           res,
           'VALIDATION_ERROR',
           'Invalid request data',
@@ -218,7 +246,11 @@ export class OrganizationController {
    */
   async deductCredits(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       // Validate request body
       const { credits } = deductCreditsSchema.parse(req.body);
@@ -232,7 +264,8 @@ export class OrganizationController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse(
+        errorResponse(
+        
           res,
           'VALIDATION_ERROR',
           'Invalid request data',
@@ -250,7 +283,11 @@ export class OrganizationController {
    */
   async getCreditBalance(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       const balance = await organizationService.getCreditBalance(id);
 
@@ -266,7 +303,11 @@ export class OrganizationController {
    */
   async updateStripeCustomer(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       // Validate request body
       const { stripeCustomerId, paymentMethodId, last4, brand } =
@@ -287,7 +328,8 @@ export class OrganizationController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse(
+        errorResponse(
+        
           res,
           'VALIDATION_ERROR',
           'Invalid request data',
@@ -305,7 +347,11 @@ export class OrganizationController {
    */
   async updateStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       // Validate request body
       const { status } = updateStatusSchema.parse(req.body);
@@ -319,7 +365,8 @@ export class OrganizationController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse(
+        errorResponse(
+        
           res,
           'VALIDATION_ERROR',
           'Invalid request data',
@@ -337,7 +384,11 @@ export class OrganizationController {
    */
   async updateBillingStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       // Validate request body
       const { billingStatus } = updateBillingStatusSchema.parse(req.body);
@@ -351,7 +402,8 @@ export class OrganizationController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse(
+        errorResponse(
+        
           res,
           'VALIDATION_ERROR',
           'Invalid request data',
@@ -369,7 +421,11 @@ export class OrganizationController {
    */
   async deleteOrganization(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Organization ID is required', 400);
+      return;
+      }
 
       await organizationService.deleteOrganization(id);
 
@@ -409,7 +465,8 @@ export class OrganizationController {
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return errorResponse(
+        errorResponse(
+        
           res,
           'VALIDATION_ERROR',
           'Invalid query parameters',
