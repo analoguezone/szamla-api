@@ -196,11 +196,14 @@ model Invoice {
   invoiceType   String  @default("normal") @map("invoice_type") @db.VarChar(20)
 
   // Storno Relationships
-  originalInvoiceId   String?  @map("original_invoice_id") @db.Uuid
-  originalInvoice     Invoice? @relation("StornoRelation", fields: [originalInvoiceId], references: [id])
-  stornedByInvoiceId  String?  @map("storned_by_invoice_id") @db.Uuid
-  stornedByInvoice    Invoice? @relation("StornoRelation", references: [id])
-  isStorned           Boolean  @default(false) @map("is_storned")
+  // If this invoice is a storno, it references the original invoice
+  originalInvoiceId String?   @map("original_invoice_id") @db.Uuid
+  originalInvoice   Invoice?  @relation("StornoRelation", fields: [originalInvoiceId], references: [id], onDelete: Restrict)
+
+  // If this invoice has been storned, this lists the storno invoices
+  stornedByInvoices Invoice[] @relation("StornoRelation")
+
+  isStorned Boolean @default(false) @map("is_storned")
 
   // Dates
   issueDate       DateTime  @map("issue_date") @db.Date
