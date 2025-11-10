@@ -1,5 +1,10 @@
 import { Router } from 'express';
 import { organizationController } from '@controllers/organization.controller';
+import {
+  authenticate,
+  requireOrganizationOwnership,
+  requireAdmin,
+} from '@middleware/auth.middleware';
 
 /**
  * Organization Routes
@@ -13,13 +18,14 @@ const router = Router();
 
 /**
  * @route   GET /api/v1/organizations
- * @desc    List organizations with pagination and filtering
- * @access  Protected (requires authentication) - TODO: Add auth middleware
+ * @desc    List organizations (admin only - for now)
+ * @access  Protected (admin)
  * @query   skip, take, status, search
  */
 router.get(
   '/',
-  // TODO: Add authentication middleware
+  authenticate,
+  requireAdmin,
   organizationController.listOrganizations.bind(organizationController)
 );
 
@@ -38,12 +44,13 @@ router.post(
 /**
  * @route   GET /api/v1/organizations/:id
  * @desc    Get organization by ID
- * @access  Protected (organization owner or admin)
+ * @access  Protected (organization owner)
  * @param   id - Organization UUID
  */
 router.get(
   '/:id',
-  // TODO: Add authentication and authorization middleware
+  authenticate,
+  requireOrganizationOwnership,
   organizationController.getOrganization.bind(organizationController)
 );
 
@@ -56,7 +63,8 @@ router.get(
  */
 router.patch(
   '/:id',
-  // TODO: Add authentication and authorization middleware
+  authenticate,
+  requireOrganizationOwnership,
   organizationController.updateOrganization.bind(organizationController)
 );
 
@@ -68,7 +76,8 @@ router.patch(
  */
 router.delete(
   '/:id',
-  // TODO: Add authentication and authorization middleware
+  authenticate,
+  requireOrganizationOwnership,
   organizationController.deleteOrganization.bind(organizationController)
 );
 
@@ -80,7 +89,8 @@ router.delete(
  */
 router.get(
   '/:id/nav-credentials',
-  // TODO: Add strict authentication and authorization
+  authenticate,
+  requireOrganizationOwnership,
   organizationController.getOrganizationWithNAVCredentials.bind(organizationController)
 );
 
@@ -93,7 +103,8 @@ router.get(
  */
 router.put(
   '/:id/nav-credentials',
-  // TODO: Add authentication and authorization middleware
+  authenticate,
+  requireOrganizationOwnership,
   organizationController.updateNAVCredentials.bind(organizationController)
 );
 
@@ -105,7 +116,8 @@ router.put(
  */
 router.post(
   '/:id/nav-credentials/test',
-  // TODO: Add authentication and authorization middleware
+  authenticate,
+  requireOrganizationOwnership,
   organizationController.testNAVConnection.bind(organizationController)
 );
 
@@ -117,7 +129,8 @@ router.post(
  */
 router.get(
   '/:id/credits',
-  // TODO: Add authentication and authorization middleware
+  authenticate,
+  requireOrganizationOwnership,
   organizationController.getCreditBalance.bind(organizationController)
 );
 
@@ -130,7 +143,8 @@ router.get(
  */
 router.post(
   '/:id/credits/add',
-  // TODO: Add authentication and authorization middleware (admin only)
+  authenticate,
+  requireAdmin,
   organizationController.addCredits.bind(organizationController)
 );
 
@@ -143,7 +157,8 @@ router.post(
  */
 router.post(
   '/:id/credits/deduct',
-  // TODO: Add authentication middleware (system/internal only)
+  authenticate,
+  requireAdmin,
   organizationController.deductCredits.bind(organizationController)
 );
 
@@ -156,7 +171,8 @@ router.post(
  */
 router.put(
   '/:id/stripe-customer',
-  // TODO: Add authentication middleware (internal/webhook only)
+  authenticate,
+  requireAdmin,
   organizationController.updateStripeCustomer.bind(organizationController)
 );
 
@@ -169,7 +185,8 @@ router.put(
  */
 router.patch(
   '/:id/status',
-  // TODO: Add authentication middleware (admin only)
+  authenticate,
+  requireAdmin,
   organizationController.updateStatus.bind(organizationController)
 );
 
@@ -182,7 +199,8 @@ router.patch(
  */
 router.patch(
   '/:id/billing-status',
-  // TODO: Add authentication middleware (admin/internal only)
+  authenticate,
+  requireAdmin,
   organizationController.updateBillingStatus.bind(organizationController)
 );
 
