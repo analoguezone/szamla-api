@@ -1,0 +1,535 @@
+// Prisma Schema for Számlázó NAV API
+// Credit-based multi-tenant invoicing system
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =================================
+// Organizations (Multi-tenant)
+// =================================
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Organization Details
+  name      String   @db.VarChar(255)
+  taxNumber String   @unique @map("tax_number") @db.VarChar(20)
+  email     String   @db.VarChar(255)
+  phone     String?  @db.VarChar(50)
+
+  // Address
+  country    String @default("HU") @db.VarChar(2)
+  postalCode String @map("postal_code") @db.VarChar(10)
+  city       String @db.VarChar(100)
+  address    String @db.VarChar(255)
+
+  // Invoice Settings
+  invoicePrefix      String @default("INV") @map("invoice_prefix") @db.VarChar(10)
+  nextInvoiceNumber  Int    @default(1) @map("next_invoice_number")
+  defaultCurrency    String @default("HUF") @map("default_currency") @db.VarChar(3)
+  defaultLanguage    String @default("hu") @map("default_language") @db.VarChar(2)
+
+  // Logo
+  logoUrl String? @map("logo_url") @db.VarChar(500)
+
+  // NAV Credentials (Encrypted)
+  navLogin                 String?   @map("nav_login") @db.VarChar(255)
+  navPasswordEncrypted     String?   @map("nav_password_encrypted") @db.Text
+  navSignatureKeyEncrypted String?   @map("nav_signature_key_encrypted") @db.Text
+  navExchangeKeyEncrypted  String?   @map("nav_exchange_key_encrypted") @db.Text
+  navConnectionTested      Boolean   @default(false) @map("nav_connection_tested")
+  navLastTestAt            DateTime? @map("nav_last_test_at")
+
+  // Software Details (for NAV)
+  softwareId                  String @default("SZAMLA_API_V1") @map("software_id") @db.VarChar(100)
+  softwareName                String @default("Számlázó API") @map("software_name") @db.VarChar(100)
+  softwareDeveloper           String @map("software_developer") @db.VarChar(100)
+  softwareDeveloperEmail      String @map("software_developer_email") @db.VarChar(255)
+  softwareDeveloperTaxNumber  String? @map("software_developer_tax_number") @db.VarChar(20)
+
+  // Credit-Based Billing
+  balanceCredits       Int     @default(0) @map("balance_credits")
+  creditsPerInvoice    Int     @default(1) @map("credits_per_invoice")
+  customPricePerCredit Decimal @default(120.00) @map("custom_price_per_credit") @db.Decimal(10, 2)
+  hasCustomPricing     Boolean @default(false) @map("has_custom_pricing")
+
+  // Auto-Recharge
+  autoRechargeEnabled         Boolean @default(true) @map("auto_recharge_enabled")
+  autoRechargeThresholdPercent Int    @default(20) @map("auto_recharge_threshold_percent")
+  autoRechargePackage         String  @default("basic") @map("auto_recharge_package") @db.VarChar(20)
+
+  // Stripe
+  stripeCustomerId       String? @unique @map("stripe_customer_id") @db.VarChar(255)
+  stripePaymentMethodId  String? @map("stripe_payment_method_id") @db.VarChar(255)
+  paymentMethodLast4     String? @map("payment_method_last4") @db.VarChar(4)
+  paymentMethodBrand     String? @map("payment_method_brand") @db.VarChar(20)
+
+  // Status
+  status         String    @default("active") @map("status") @db.VarChar(20)
+  billingStatus  String    @default("active") @map("billing_status") @db.VarChar(20)
+  lowBalanceAlertSentAt DateTime? @map("low_balance_alert_sent_at")
+
+  // Relations
+  apiKeys           ApiKey[]
+  partners          Partner[]
+  invoices          Invoice[]
+  transactions      Transaction[]
+  navSubmissions    NavSubmission[]
+  billingAlerts     BillingAlert[]
+  promotionalCredits PromotionalCredit[]
+
+  @@map("organizations")
+  @@index([status, deletedAt])
+  @@index([balanceCredits])
+}
+
+// =================================
+// API Keys
+// =================================
+
+model ApiKey {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Key Details
+  keyPrefix String @map("key_prefix") @db.VarChar(20)
+  keyHash   String @unique @map("key_hash") @db.VarChar(255)
+  name      String? @db.VarChar(100)
+
+  // Permissions
+  scopes String[] @default(["invoices:read", "invoices:write"])
+
+  // Rate Limiting
+  rateLimitPerMinute Int @default(60) @map("rate_limit_per_minute")
+  rateLimitPerDay    Int @default(10000) @map("rate_limit_per_day")
+
+  // Status
+  isActive   Boolean   @default(true) @map("is_active")
+  lastUsedAt DateTime? @map("last_used_at")
+  expiresAt  DateTime? @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  revokedBy  String?   @map("revoked_by") @db.VarChar(255)
+  createdBy  String?   @map("created_by") @db.VarChar(255)
+
+  @@map("api_keys")
+  @@index([organizationId, isActive])
+  @@index([keyHash])
+}
+
+// =================================
+// Partners (Customers/Suppliers)
+// =================================
+
+model Partner {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Partner Details
+  name       String  @db.VarChar(255)
+  taxNumber  String? @map("tax_number") @db.VarChar(20)
+  taxNumberEu String? @map("tax_number_eu") @db.VarChar(20)
+  isIndividual Boolean @default(false) @map("is_individual")
+  isForeign  Boolean @default(false) @map("is_foreign")
+
+  // Contact
+  email String? @db.VarChar(255)
+  phone String? @db.VarChar(50)
+
+  // Address
+  country    String @default("HU") @db.VarChar(2)
+  postalCode String @map("postal_code") @db.VarChar(10)
+  city       String @db.VarChar(100)
+  address    String @db.VarChar(255)
+
+  // Banking
+  bankAccountNumber String? @map("bank_account_number") @db.VarChar(50)
+  bankName          String? @map("bank_name") @db.VarChar(100)
+  swiftBic          String? @map("swift_bic") @db.VarChar(11)
+
+  // Metadata
+  notes String? @db.Text
+
+  // Relations
+  invoices Invoice[]
+
+  @@map("partners")
+  @@index([organizationId, deletedAt])
+  @@index([organizationId, taxNumber])
+  @@index([organizationId, name])
+}
+
+// =================================
+// Invoices
+// =================================
+
+model Invoice {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  partnerId String  @map("partner_id") @db.Uuid
+  partner   Partner @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+
+  // Invoice Identification
+  invoiceNumber String  @map("invoice_number") @db.VarChar(50)
+  invoiceType   String  @default("normal") @map("invoice_type") @db.VarChar(20)
+
+  // Storno Relationships
+  originalInvoiceId   String?  @map("original_invoice_id") @db.Uuid
+  originalInvoice     Invoice? @relation("StornoRelation", fields: [originalInvoiceId], references: [id])
+  stornedByInvoiceId  String?  @map("storned_by_invoice_id") @db.Uuid
+  stornedByInvoice    Invoice? @relation("StornoRelation", references: [id])
+  isStorned           Boolean  @default(false) @map("is_storned")
+
+  // Dates
+  issueDate       DateTime  @map("issue_date") @db.Date
+  fulfillmentDate DateTime  @map("fulfillment_date") @db.Date
+  dueDate         DateTime  @map("due_date") @db.Date
+  paymentDate     DateTime? @map("payment_date") @db.Date
+
+  // Financial Details
+  currency     String  @default("HUF") @db.VarChar(3)
+  exchangeRate Decimal @default(1.0) @map("exchange_rate") @db.Decimal(12, 6)
+
+  // Amounts
+  netAmount   Decimal @map("net_amount") @db.Decimal(15, 2)
+  vatAmount   Decimal @map("vat_amount") @db.Decimal(15, 2)
+  grossAmount Decimal @map("gross_amount") @db.Decimal(15, 2)
+
+  // Payment
+  paymentMethod String @default("transfer") @map("payment_method") @db.VarChar(50)
+  paymentStatus String @default("unpaid") @map("payment_status") @db.VarChar(20)
+
+  // VAT Summary (JSON)
+  vatSummary Json? @map("vat_summary")
+
+  // Additional Info
+  language     String  @default("hu") @db.VarChar(2)
+  comment      String? @db.Text
+  internalNote String? @map("internal_note") @db.Text
+
+  // Status
+  status      String    @default("draft") @db.VarChar(20)
+  finalizedAt DateTime? @map("finalized_at")
+
+  // NAV Related
+  navStatus        String    @default("pending") @map("nav_status") @db.VarChar(20)
+  navTransactionId String?   @map("nav_transaction_id") @db.VarChar(100)
+  navConfirmedAt   DateTime? @map("nav_confirmed_at")
+  navError         String?   @map("nav_error") @db.Text
+
+  // File References
+  pdfPath    String? @map("pdf_path") @db.VarChar(500)
+  navXmlPath String? @map("nav_xml_path") @db.VarChar(500)
+
+  // Relations
+  items          InvoiceItem[]
+  transactions   Transaction[]
+  navSubmissions NavSubmission[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@map("invoices")
+  @@index([organizationId, deletedAt])
+  @@index([partnerId])
+  @@index([organizationId, issueDate, dueDate])
+  @@index([organizationId, status])
+  @@index([organizationId, paymentStatus])
+  @@index([navStatus])
+  @@index([originalInvoiceId])
+}
+
+// =================================
+// Invoice Items
+// =================================
+
+model InvoiceItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoiceId String  @map("invoice_id") @db.Uuid
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Position
+  lineNumber Int @map("line_number")
+
+  // Product/Service Details
+  name        String  @db.VarChar(255)
+  description String? @db.Text
+  sku         String? @db.VarChar(100)
+
+  // Quantity & Unit
+  quantity Decimal @db.Decimal(10, 3)
+  unit     String  @default("db") @db.VarChar(20)
+
+  // Pricing
+  netUnitPrice Decimal @map("net_unit_price") @db.Decimal(15, 2)
+  vatRate      Decimal @map("vat_rate") @db.Decimal(5, 2)
+  vatCode      String? @map("vat_code") @db.VarChar(20)
+
+  // Calculated Amounts
+  netAmount   Decimal @map("net_amount") @db.Decimal(15, 2)
+  vatAmount   Decimal @map("vat_amount") @db.Decimal(15, 2)
+  grossAmount Decimal @map("gross_amount") @db.Decimal(15, 2)
+
+  // Additional Info
+  comment String? @db.Text
+
+  @@unique([invoiceId, lineNumber])
+  @@map("invoice_items")
+  @@index([invoiceId])
+  @@index([sku])
+}
+
+// =================================
+// Credit Packages
+// =================================
+
+model CreditPackage {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Package Details
+  code    String @unique @db.VarChar(20)
+  name    String @db.VarChar(100)
+  credits Int
+
+  // Pricing
+  basePricePerCredit Decimal @default(120.00) @map("base_price_per_credit") @db.Decimal(10, 2)
+  discountPercent    Int     @default(0) @map("discount_percent")
+  finalPriceHuf      Decimal @map("final_price_huf") @db.Decimal(10, 2)
+
+  // Display
+  description String? @db.Text
+  badge       String? @db.VarChar(50)
+  features    Json?
+
+  // Status
+  isActive   Boolean @default(true) @map("is_active")
+  isFeatured Boolean @default(false) @map("is_featured")
+  sortOrder  Int     @default(0) @map("sort_order")
+
+  @@map("credit_packages")
+  @@index([isActive, sortOrder])
+  @@index([isFeatured])
+}
+
+// =================================
+// Transactions
+// =================================
+
+model Transaction {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  invoiceId String?  @map("invoice_id") @db.Uuid
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  // Transaction Details
+  type String @db.VarChar(20)
+
+  // Credits
+  creditsAmount        Int @map("credits_amount")
+  balanceBeforeCredits Int @map("balance_before_credits")
+  balanceAfterCredits  Int @map("balance_after_credits")
+
+  // Payment Details (for purchases)
+  packageType     String?  @map("package_type") @db.VarChar(20)
+  priceHuf        Decimal? @map("price_huf") @db.Decimal(10, 2)
+  discountPercent Int      @default(0) @map("discount_percent")
+
+  paymentProvider  String? @map("payment_provider") @db.VarChar(20)
+  paymentReference String? @map("payment_reference") @db.VarChar(255)
+  paymentStatus    String? @map("payment_status") @db.VarChar(20)
+
+  // Description
+  description String? @db.Text
+  metadata    Json?
+
+  // Stripe
+  stripePaymentIntentId String? @map("stripe_payment_intent_id") @db.VarChar(255)
+  stripeChargeId        String? @map("stripe_charge_id") @db.VarChar(255)
+
+  // Timestamps
+  processedAt DateTime? @map("processed_at")
+
+  @@map("transactions")
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, type])
+  @@index([invoiceId])
+  @@index([stripePaymentIntentId])
+}
+
+// =================================
+// NAV Submissions
+// =================================
+
+model NavSubmission {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  invoiceId String?  @map("invoice_id") @db.Uuid
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+
+  // Submission Details
+  operationType    String  @map("operation_type") @db.VarChar(20)
+  operationSubtype String? @map("operation_subtype") @db.VarChar(20)
+  transactionId    String  @map("transaction_id") @db.VarChar(100)
+
+  // Request/Response
+  requestXml         String? @map("request_xml") @db.Text
+  requestHash        String? @map("request_hash") @db.VarChar(128)
+  responseJson       Json?   @map("response_json")
+  processingResults  Json?   @map("processing_results")
+
+  // Status
+  status String @default("pending") @db.VarChar(20)
+
+  // Timing
+  submittedAt   DateTime  @default(now()) @map("submitted_at")
+  lastCheckedAt DateTime? @map("last_checked_at")
+  completedAt   DateTime? @map("completed_at")
+
+  // Error Handling
+  errorCode    String? @map("error_code") @db.VarChar(50)
+  errorMessage String? @map("error_message") @db.Text
+  retryCount   Int     @default(0) @map("retry_count")
+
+  // Metadata
+  navApiVersion String? @map("nav_api_version") @db.VarChar(10)
+  userAgent     String? @map("user_agent") @db.VarChar(255)
+
+  @@map("nav_submissions")
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@index([transactionId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+}
+
+// =================================
+// Billing Alerts
+// =================================
+
+model BillingAlert {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  alertType String @map("alert_type") @db.VarChar(50)
+  severity  String @db.VarChar(20)
+
+  message  String @db.Text
+  metadata Json?
+
+  // Status
+  isRead     Boolean   @default(false) @map("is_read")
+  isResolved Boolean   @default(false) @map("is_resolved")
+  resolvedAt DateTime? @map("resolved_at")
+
+  @@map("billing_alerts")
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, isRead])
+}
+
+// =================================
+// Promotional Credits
+// =================================
+
+model PromotionalCredit {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organizationId String       @map("organization_id") @db.Uuid
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Promo Details
+  promoCode      String? @map("promo_code") @db.VarChar(50)
+  creditsGranted Int     @map("credits_granted")
+  reason         String? @db.Text
+
+  grantedBy String?   @map("granted_by") @db.VarChar(100)
+  expiresAt DateTime? @map("expires_at")
+
+  @@map("promotional_credits")
+  @@index([organizationId])
+}
+
+// =================================
+// Usage Logs (for analytics)
+// =================================
+
+model UsageLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  organizationId String @map("organization_id") @db.Uuid
+  apiKeyId       String? @map("api_key_id") @db.Uuid
+
+  // Request Details
+  endpoint   String @db.VarChar(255)
+  httpMethod String @map("http_method") @db.VarChar(10)
+  httpStatus Int    @map("http_status")
+
+  // Timing
+  requestTimestamp DateTime @default(now()) @map("request_timestamp")
+  responseTimeMs   Int?     @map("response_time_ms")
+
+  // Size
+  requestSizeBytes  Int? @map("request_size_bytes")
+  responseSizeBytes Int? @map("response_size_bytes")
+
+  // Client
+  clientIp  String? @map("client_ip") @db.Inet
+  userAgent String? @map("user_agent") @db.VarChar(255)
+
+  // Resource
+  resourceType String? @map("resource_type") @db.VarChar(50)
+  resourceId   String? @map("resource_id") @db.Uuid
+
+  // Costs
+  operationCost Decimal? @map("operation_cost") @db.Decimal(10, 4)
+
+  // Error
+  errorCode    String? @map("error_code") @db.VarChar(50)
+  errorMessage String? @map("error_message") @db.Text
+
+  // Metadata
+  requestId String? @map("request_id") @db.VarChar(100)
+
+  @@map("usage_logs")
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([apiKeyId, createdAt(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@index([endpoint, organizationId])
+}
