@@ -5,6 +5,7 @@ import apiKeyRoutes from './api-key.routes';
 import partnerRoutes from './partner.routes';
 import invoiceRoutes from './invoice.routes';
 import navRoutes from './nav.routes';
+import billingRoutes from './billing.routes';
 
 const router = Router();
 
@@ -15,8 +16,6 @@ router.use('/api-keys', apiKeyRoutes);
 router.use('/partners', partnerRoutes);
 router.use('/invoices', invoiceRoutes);
 router.use('/nav', navRoutes);
-
-// API routes (to be added)
-// router.use('/billing', billingRoutes);
+router.use('/billing', billingRoutes);
 
 export { router };
