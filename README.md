@@ -9,8 +9,11 @@ This is a **production-ready REST API** that provides:
 - ✅ Invoice management (create, list, storno/cancellation)
 - ✅ Automatic NAV online invoice registration (Hungarian legal requirement)
 - ✅ Multi-tenant architecture (isolated organizations)
-- ✅ Usage tracking for subscription billing
-- ✅ Secure NAV credential management
+- ✅ Credit-based billing with Stripe integration
+- ✅ Progressive discount pricing (0% to 80% savings)
+- ✅ Partner management with EU VAT support
+- ✅ Multi-currency invoicing (HUF, EUR, USD, GBP, etc.)
+- ✅ Secure NAV credential management with AES-256 encryption
 - ✅ PDF invoice generation
 - ✅ API key authentication
 
@@ -65,8 +68,8 @@ docker-compose up -d
 # Run migrations
 docker-compose exec api npm run db:migrate
 
-# Seed dev data
-docker-compose exec api npm run seed:dev
+# Seed credit packages
+docker-compose exec api npm run db:seed
 ```
 
 API will be available at `http://localhost:3000`
@@ -85,6 +88,9 @@ nano .env
 
 # Run migrations
 npm run db:migrate
+
+# Seed credit packages
+npm run db:seed
 
 # Start development server
 npm run dev
@@ -175,6 +181,35 @@ GET /api/v1/usage/current
 GET /api/v1/usage/history?from_date=2025-01-01&to_date=2025-01-31
 ```
 
+### Billing & Credit Purchases
+
+```bash
+# List available credit packages
+GET /api/v1/billing/packages
+
+# Get featured packages
+GET /api/v1/billing/packages/featured
+
+# Create payment intent (Stripe)
+POST /api/v1/billing/purchase-intent
+
+# Create checkout session
+POST /api/v1/billing/checkout
+
+# List transactions
+GET /api/v1/billing/transactions
+
+# Get purchase statistics
+GET /api/v1/billing/stats
+```
+
+**Credit Packages** (seeded via `npm run db:seed`):
+- **Starter**: 50 credits @ 6,000 HUF (120 HUF/credit, 0% discount)
+- **Basic**: 100 credits @ 9,600 HUF (96 HUF/credit, 20% discount) - Most Popular ⭐
+- **Pro**: 500 credits @ 36,000 HUF (72 HUF/credit, 40% discount) - Best Value 💎
+- **Business**: 1,000 credits @ 48,000 HUF (48 HUF/credit, 60% discount)
+- **Enterprise**: 10,000 credits @ 240,000 HUF (24 HUF/credit, 80% discount) - Best Deal 🚀
+
 See [API_DESIGN.md](./API_DESIGN.md) for complete API reference.
 
 ## 🧪 Testing
@@ -216,6 +251,9 @@ npm run db:migrate
 
 # Create new migration
 npm run db:migration:create -- --name=add_new_field
+
+# Seed credit packages
+npm run db:seed
 
 # Generate API key for testing
 npm run api-key:generate -- --org=org_test_123
