@@ -38,6 +38,7 @@
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.3",
     "bullmq": "^5.15.0",
@@ -66,7 +67,7 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/jest": "^29.5.14",
-    "@types/node": "^22.9.3",
+    "@types/node": "^22.19.0",
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.14.0",
     "@typescript-eslint/parser": "^8.14.0",
