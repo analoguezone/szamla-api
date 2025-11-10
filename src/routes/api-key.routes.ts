@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { apiKeyController } from '@controllers/api-key.controller';
 import { authenticate } from '@middleware/auth.middleware';
+import { standardRateLimiter } from '@middleware/rate-limit.middleware';
 
 /**
  * API Key Routes
@@ -36,8 +37,9 @@ router.get('/', apiKeyController.listApiKeys.bind(apiKeyController));
  * @desc    Create a new API key
  * @access  Protected (organization owner)
  * @body    CreateApiKeyInput
+ * @ratelimit 60 requests per minute per IP
  */
-router.post('/', apiKeyController.createApiKey.bind(apiKeyController));
+router.post('/', standardRateLimiter, apiKeyController.createApiKey.bind(apiKeyController));
 
 /**
  * @route   GET /api/v1/api-keys/:id

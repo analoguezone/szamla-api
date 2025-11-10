@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { invoiceController } from '@controllers/invoice.controller';
 import { authenticate, requireInvoicesRead, requireInvoicesWrite } from '@middleware/auth.middleware';
+import { standardRateLimiter } from '@middleware/rate-limit.middleware';
 
 /**
  * Invoice Routes
@@ -41,8 +42,9 @@ router.get('/', requireInvoicesRead, invoiceController.listInvoices.bind(invoice
  * @desc    Create a new invoice (deducts 1 credit)
  * @access  Protected (invoices:write scope)
  * @body    CreateInvoiceInput (including multi-currency, EU VAT codes)
+ * @ratelimit 60 requests per minute per IP
  */
-router.post('/', requireInvoicesWrite, invoiceController.createInvoice.bind(invoiceController));
+router.post('/', standardRateLimiter, requireInvoicesWrite, invoiceController.createInvoice.bind(invoiceController));
 
 /**
  * @route   GET /api/v1/invoices/:id
@@ -58,8 +60,9 @@ router.get('/:id', requireInvoicesRead, invoiceController.getInvoice.bind(invoic
  * @access  Protected (invoices:write scope)
  * @param   id - Original invoice UUID
  * @body    { issueDate, comment?, internalNote? }
+ * @ratelimit 60 requests per minute per IP
  */
-router.post('/:id/storno', requireInvoicesWrite, invoiceController.createStornoInvoice.bind(invoiceController));
+router.post('/:id/storno', standardRateLimiter, requireInvoicesWrite, invoiceController.createStornoInvoice.bind(invoiceController));
 
 /**
  * @route   POST /api/v1/invoices/:id/finalize

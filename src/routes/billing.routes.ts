@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { billingController } from '@controllers/billing.controller';
 import { authenticate } from '@middleware/auth.middleware';
+import { billingRateLimiter, publicRateLimiter } from '@middleware/rate-limit.middleware';
 import express from 'express';
 
 /**
@@ -17,15 +18,17 @@ const router = Router();
  * @route   GET /api/v1/billing/packages
  * @desc    List available credit packages (public)
  * @access  Public
+ * @ratelimit 100 requests per minute per IP
  */
-router.get('/packages', billingController.listPackages.bind(billingController));
+router.get('/packages', publicRateLimiter, billingController.listPackages.bind(billingController));
 
 /**
  * @route   GET /api/v1/billing/packages/featured
  * @desc    Get featured credit packages (public)
  * @access  Public
+ * @ratelimit 100 requests per minute per IP
  */
-router.get('/packages/featured', billingController.getFeaturedPackages.bind(billingController));
+router.get('/packages/featured', publicRateLimiter, billingController.getFeaturedPackages.bind(billingController));
 
 /**
  * @route   POST /api/v1/billing/webhook
@@ -46,16 +49,18 @@ router.use(authenticate);
  * @desc    Create payment intent for credit purchase
  * @access  Protected
  * @body    { packageCode: string }
+ * @ratelimit 10 requests per minute per IP
  */
-router.post('/purchase-intent', billingController.createPurchaseIntent.bind(billingController));
+router.post('/purchase-intent', billingRateLimiter, billingController.createPurchaseIntent.bind(billingController));
 
 /**
  * @route   POST /api/v1/billing/checkout
  * @desc    Create Stripe checkout session for credit purchase
  * @access  Protected
  * @body    { packageCode: string, successUrl: string, cancelUrl: string }
+ * @ratelimit 10 requests per minute per IP
  */
-router.post('/checkout', billingController.createCheckoutSession.bind(billingController));
+router.post('/checkout', billingRateLimiter, billingController.createCheckoutSession.bind(billingController));
 
 /**
  * @route   GET /api/v1/billing/transactions
