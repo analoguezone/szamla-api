@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { organizationService } from '@services/organization.service';
+import { navService } from '@services/nav.service';
 import {
   createOrganizationSchema,
   updateOrganizationSchema,
@@ -170,7 +171,6 @@ export class OrganizationController {
   /**
    * Test NAV connection
    * POST /api/v1/organizations/:id/nav-credentials/test
-   * TODO: Implement actual NAV connection test
    */
   async testNAVConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -188,15 +188,17 @@ export class OrganizationController {
         throw new ValidationError('NAV credentials not configured');
       }
 
-      // TODO: Implement actual NAV API connection test
-      // For now, just mark as tested
-      const success = true; // Replace with actual test result
+      // Test NAV connection using NAV service
+      const testResult = await navService.testConnection(id);
 
-      await organizationService.markNAVConnectionTested(id, success);
+      // Mark connection as tested
+      await organizationService.markNAVConnectionTested(id, testResult.success);
 
       successResponse(res, {
-        success,
-        message: success ? 'NAV connection successful' : 'NAV connection failed',
+        success: testResult.success,
+        message: testResult.message,
+        technicalUser: testResult.technicalUser,
+        timestamp: testResult.timestamp,
       });
     } catch (error) {
       next(error);

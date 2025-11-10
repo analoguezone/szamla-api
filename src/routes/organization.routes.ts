@@ -5,6 +5,7 @@ import {
   requireOrganizationOwnership,
   requireAdmin,
 } from '@middleware/auth.middleware';
+import { signupRateLimiter } from '@middleware/rate-limit.middleware';
 
 /**
  * Organization Routes
@@ -34,10 +35,11 @@ router.get(
  * @desc    Create a new organization
  * @access  Public (for initial signup) or Admin
  * @body    CreateOrganizationInput
+ * @ratelimit 5 signups per 15 minutes per IP
  */
 router.post(
   '/',
-  // TODO: Add rate limiting for signup
+  signupRateLimiter,
   organizationController.createOrganization.bind(organizationController)
 );
 
