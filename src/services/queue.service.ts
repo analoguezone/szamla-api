@@ -42,13 +42,6 @@ class QueueService {
   }
 
   /**
-   * Get PDF generation queue
-   */
-  get pdfGenerationQueue(): Queue {
-    return this.getQueue(QueueName.PDF_GENERATION);
-  }
-
-  /**
    * Get usage aggregation queue
    */
   get usageAggregationQueue(): Queue {

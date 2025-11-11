@@ -37,6 +37,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.928.0",
+    "@aws-sdk/lib-storage": "^3.928.0",
     "@prisma/client": "^5.22.0",
     "axios": "^1.13.2",
     "bcrypt": "^5.1.1",

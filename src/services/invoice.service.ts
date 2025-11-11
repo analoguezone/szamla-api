@@ -276,13 +276,6 @@ export class InvoiceService {
       throw new Error('Failed to create invoice');
     }
 
-    // Queue PDF generation in background
-    const { queueService } = await import('./queue.service');
-    await queueService.pdfGenerationQueue.add('generate-pdf', {
-      invoiceId: invoice.id,
-      organizationId: input.organizationId,
-    });
-
     return invoice as InvoiceWithItems;
   }
 
@@ -430,13 +423,6 @@ export class InvoiceService {
       throw new Error('Failed to create storno invoice');
     }
 
-    // Queue PDF generation in background
-    const { queueService } = await import('./queue.service');
-    await queueService.pdfGenerationQueue.add('generate-pdf', {
-      invoiceId: invoice.id,
-      organizationId,
-    });
-
     return invoice as InvoiceWithItems;
   }
 
@@ -454,6 +440,32 @@ export class InvoiceService {
         items: {
           orderBy: { lineNumber: 'asc' },
         },
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundError('Invoice', id);
+    }
+
+    return invoice;
+  }
+
+  /**
+   * Get invoice with all relations (for PDF generation)
+   */
+  async getInvoiceWithRelations(id: string, organizationId: string): Promise<any> {
+    const invoice = await db.invoice.findFirst({
+      where: {
+        id,
+        organizationId,
+        deletedAt: null,
+      },
+      include: {
+        items: {
+          orderBy: { lineNumber: 'asc' },
+        },
+        organization: true,
+        partner: true,
       },
     });
 

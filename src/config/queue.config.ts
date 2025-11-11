@@ -23,7 +23,6 @@ export const queueConnection: ConnectionOptions = {
 export const QueueName = {
   NAV_SUBMISSION: 'nav-submission',
   NAV_STATUS_POLLING: 'nav-status-polling',
-  PDF_GENERATION: 'pdf-generation',
   USAGE_AGGREGATION: 'usage-aggregation',
 } as const;
 
@@ -52,6 +51,5 @@ export const defaultJobOptions = {
 export const workerConcurrency = {
   [QueueName.NAV_SUBMISSION]: 5, // Process 5 NAV submissions concurrently
   [QueueName.NAV_STATUS_POLLING]: 10, // Poll 10 statuses concurrently
-  [QueueName.PDF_GENERATION]: 3, // Generate 3 PDFs concurrently (resource intensive)
   [QueueName.USAGE_AGGREGATION]: 1, // Single aggregation job at a time
 };

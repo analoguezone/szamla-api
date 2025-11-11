@@ -1,10 +1,7 @@
 import { Worker } from 'bullmq';
-import { createPDFGenerationWorker } from './pdf-generation.job';
 import { createNAVSubmissionWorker } from './nav-submission.job';
 import { createNAVStatusPollingWorker } from './nav-status-polling.job';
 import { logger } from '@config/logger';
-import { pdfService } from '@services/pdf.service';
-import { storageService } from '@services/storage.service';
 
 /**
  * Job Workers
@@ -28,16 +25,11 @@ class WorkerManager {
     logger.info('Initializing background workers...');
 
     try {
-      // Initialize services
-      await storageService.initialize();
-      await pdfService.initialize();
-
       // Create workers
-      const pdfWorker = createPDFGenerationWorker();
       const navSubmissionWorker = createNAVSubmissionWorker();
       const navStatusPollingWorker = createNAVStatusPollingWorker();
 
-      this.workers = [pdfWorker, navSubmissionWorker, navStatusPollingWorker];
+      this.workers = [navSubmissionWorker, navStatusPollingWorker];
 
       // Setup event handlers for all workers
       this.workers.forEach((worker) => {
@@ -93,9 +85,6 @@ class WorkerManager {
     try {
       // Close all workers
       await Promise.all(this.workers.map((worker) => worker.close()));
-
-      // Close services
-      await pdfService.close();
 
       this.workers = [];
       this.isInitialized = false;

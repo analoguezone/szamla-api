@@ -6,9 +6,9 @@ import {
   createStornoInvoiceSchema,
 } from '@validators/invoice.validator';
 import { successResponse, errorResponse } from '@utils/response';
-import { ForbiddenError, NotFoundError } from '@utils/errors';
-import { storageService } from '@services/storage.service';
+import { ForbiddenError } from '@utils/errors';
 import { queueService } from '@services/queue.service';
+import { pdfService } from '@services/pdf.service';
 import { z } from 'zod';
 
 /**
@@ -312,7 +312,7 @@ export class InvoiceController {
   }
 
   /**
-   * Download invoice PDF
+   * Download invoice PDF (generated on-demand)
    * GET /api/v1/invoices/:id/pdf
    */
   async downloadPDF(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -328,22 +328,11 @@ export class InvoiceController {
         throw new ForbiddenError('Authentication required');
       }
 
-      // Get invoice
-      const invoice = await invoiceService.getInvoiceById(id, req.organizationId);
+      // Get invoice with all necessary relations
+      const invoice = await invoiceService.getInvoiceWithRelations(id, req.organizationId);
 
-      // Check if PDF exists
-      if (!invoice.pdfPath) {
-        // Generate PDF if not exists - queue job
-        await queueService.pdfGenerationQueue.add('generate-pdf', {
-          invoiceId: id,
-          organizationId: req.organizationId,
-        });
-
-        throw new NotFoundError('Invoice PDF', 'PDF is being generated. Please try again in a few moments.');
-      }
-
-      // Get PDF file
-      const pdfBuffer = await storageService.getFile(invoice.pdfPath);
+      // Generate PDF on-demand
+      const pdfBuffer = await pdfService.generateInvoicePDF(invoice);
 
       // Set headers for PDF download
       res.setHeader('Content-Type', 'application/pdf');
