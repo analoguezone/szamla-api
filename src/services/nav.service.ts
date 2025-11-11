@@ -643,6 +643,55 @@ export class NAVService {
   }
 
   /**
+   * Query transaction status by transaction ID
+   * Wrapper method for background job compatibility
+   */
+  async queryTransactionStatus(
+    transactionId: string,
+    organizationId: string
+  ): Promise<{
+    status: 'PENDING' | 'PROCESSING' | 'DONE' | 'ABORTED' | 'FAILED';
+    errorMessage?: string;
+  }> {
+    // Find invoice by transaction ID
+    const invoice = await db.invoice.findFirst({
+      where: {
+        navTransactionId: transactionId,
+        organizationId,
+      },
+    });
+
+    if (!invoice) {
+      return {
+        status: 'FAILED',
+        errorMessage: 'Invoice not found for transaction ID',
+      };
+    }
+
+    // Query status
+    const result = await this.queryInvoiceStatus(invoice.id, organizationId);
+
+    // Map status strings to expected format
+    const statusMap: Record<string, 'PENDING' | 'PROCESSING' | 'DONE' | 'ABORTED' | 'FAILED'> = {
+      RECEIVED: 'PROCESSING',
+      PROCESSING: 'PROCESSING',
+      SAVED: 'DONE',
+      FINISHED: 'DONE',
+      NOTIFIED: 'DONE',
+      DONE: 'DONE',
+      ABORTED: 'ABORTED',
+      FAILED: 'FAILED',
+    };
+
+    const mappedStatus = statusMap[result.status] || 'PROCESSING';
+
+    return {
+      status: mappedStatus,
+      errorMessage: result.validationMessages?.join(', '),
+    };
+  }
+
+  /**
    * Escape XML special characters
    */
   private escapeXml(text: string): string {

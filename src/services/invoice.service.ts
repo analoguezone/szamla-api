@@ -276,6 +276,13 @@ export class InvoiceService {
       throw new Error('Failed to create invoice');
     }
 
+    // Queue PDF generation in background
+    const { queueService } = await import('./queue.service');
+    await queueService.pdfGenerationQueue.add('generate-pdf', {
+      invoiceId: invoice.id,
+      organizationId: input.organizationId,
+    });
+
     return invoice as InvoiceWithItems;
   }
 
@@ -422,6 +429,13 @@ export class InvoiceService {
     if (!invoice) {
       throw new Error('Failed to create storno invoice');
     }
+
+    // Queue PDF generation in background
+    const { queueService } = await import('./queue.service');
+    await queueService.pdfGenerationQueue.add('generate-pdf', {
+      invoiceId: invoice.id,
+      organizationId,
+    });
 
     return invoice as InvoiceWithItems;
   }
@@ -633,6 +647,23 @@ export class InvoiceService {
         .filter((i) => i.paymentStatus === 'unpaid')
         .reduce((sum, i) => sum + Number(i.grossAmount), 0),
     };
+  }
+
+  /**
+   * Update NAV status
+   */
+  async updateNAVStatus(
+    id: string,
+    organizationId: string,
+    navStatus: 'not_submitted' | 'pending' | 'submitted' | 'failed'
+  ): Promise<Invoice> {
+    // Verify invoice belongs to organization
+    await this.getInvoiceById(id, organizationId);
+
+    return db.invoice.update({
+      where: { id },
+      data: { navStatus },
+    });
   }
 }
 

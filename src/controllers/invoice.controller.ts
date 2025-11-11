@@ -6,7 +6,9 @@ import {
   createStornoInvoiceSchema,
 } from '@validators/invoice.validator';
 import { successResponse, errorResponse } from '@utils/response';
-import { ForbiddenError } from '@utils/errors';
+import { ForbiddenError, NotFoundError } from '@utils/errors';
+import { storageService } from '@services/storage.service';
+import { queueService } from '@services/queue.service';
 import { z } from 'zod';
 
 /**
@@ -304,6 +306,105 @@ export class InvoiceController {
       const stats = await invoiceService.getInvoiceStats(req.organizationId);
 
       successResponse(res, { stats });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Download invoice PDF
+   * GET /api/v1/invoices/:id/pdf
+   */
+  async downloadPDF(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Invoice ID is required', 400);
+        return;
+      }
+
+      // Ensure user is authenticated
+      if (!req.organizationId) {
+        throw new ForbiddenError('Authentication required');
+      }
+
+      // Get invoice
+      const invoice = await invoiceService.getInvoiceById(id, req.organizationId);
+
+      // Check if PDF exists
+      if (!invoice.pdfPath) {
+        // Generate PDF if not exists - queue job
+        await queueService.pdfGenerationQueue.add('generate-pdf', {
+          invoiceId: id,
+          organizationId: req.organizationId,
+        });
+
+        throw new NotFoundError('Invoice PDF', 'PDF is being generated. Please try again in a few moments.');
+      }
+
+      // Get PDF file
+      const pdfBuffer = await storageService.getFile(invoice.pdfPath);
+
+      // Set headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${invoice.invoiceNumber}.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+
+      // Send PDF
+      res.send(pdfBuffer);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Submit invoice to NAV
+   * POST /api/v1/invoices/:id/submit-to-nav
+   */
+  async submitToNAV(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const id = req.params.id;
+      if (!id) {
+        errorResponse(res, 'VALIDATION_ERROR', 'Invoice ID is required', 400);
+        return;
+      }
+
+      // Ensure user is authenticated
+      if (!req.organizationId) {
+        throw new ForbiddenError('Authentication required');
+      }
+
+      // Get invoice
+      const invoice = await invoiceService.getInvoiceById(id, req.organizationId);
+
+      // Check if invoice is finalized
+      if (invoice.status !== 'finalized') {
+        errorResponse(res, 'VALIDATION_ERROR', 'Only finalized invoices can be submitted to NAV', 400);
+        return;
+      }
+
+      // Check if already submitted
+      if (invoice.navStatus === 'submitted' || invoice.navStatus === 'pending') {
+        errorResponse(res, 'VALIDATION_ERROR', 'Invoice already submitted to NAV', 400);
+        return;
+      }
+
+      // Queue NAV submission job
+      const operation = invoice.invoiceType === 'storno' ? 'STORNO' : 'CREATE';
+      await queueService.navSubmissionQueue.add('submit-to-nav', {
+        invoiceId: id,
+        organizationId: req.organizationId,
+        operation,
+      });
+
+      // Update status to pending
+      await invoiceService.updateNAVStatus(id, req.organizationId, 'pending');
+
+      successResponse(res, {
+        message: 'Invoice queued for NAV submission',
+        invoiceId: id,
+        status: 'pending',
+      });
     } catch (error) {
       next(error);
     }

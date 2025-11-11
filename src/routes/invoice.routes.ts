@@ -89,4 +89,20 @@ router.patch('/:id/payment', requireInvoicesWrite, invoiceController.updatePayme
  */
 router.delete('/:id', requireInvoicesWrite, invoiceController.deleteInvoice.bind(invoiceController));
 
+/**
+ * @route   GET /api/v1/invoices/:id/pdf
+ * @desc    Download invoice PDF (generates if not exists)
+ * @access  Protected (invoices:read scope)
+ * @param   id - Invoice UUID
+ */
+router.get('/:id/pdf', requireInvoicesRead, invoiceController.downloadPDF.bind(invoiceController));
+
+/**
+ * @route   POST /api/v1/invoices/:id/submit-to-nav
+ * @desc    Submit invoice to NAV (Hungarian Tax Authority)
+ * @access  Protected (invoices:write scope)
+ * @param   id - Invoice UUID
+ */
+router.post('/:id/submit-to-nav', standardRateLimiter, requireInvoicesWrite, invoiceController.submitToNAV.bind(invoiceController));
+
 export default router;
