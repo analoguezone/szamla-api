@@ -4,6 +4,7 @@ import cors from 'cors';
 import compression from 'compression';
 import { config } from './config';
 import { loggerMiddleware } from './middleware/logger.middleware';
+import { usageTrackingMiddleware } from './middleware/usage.middleware';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { router } from './routes';
 
@@ -30,6 +31,9 @@ export function createApp(): Express {
 
   // Request logging
   app.use(loggerMiddleware);
+
+  // Usage tracking
+  app.use(usageTrackingMiddleware);
 
   // API routes
   app.use('/api/v1', router);

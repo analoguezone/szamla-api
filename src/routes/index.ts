@@ -6,6 +6,7 @@ import partnerRoutes from './partner.routes';
 import invoiceRoutes from './invoice.routes';
 import navRoutes from './nav.routes';
 import billingRoutes from './billing.routes';
+import usageRoutes from './usage.routes';
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use('/partners', partnerRoutes);
 router.use('/invoices', invoiceRoutes);
 router.use('/nav', navRoutes);
 router.use('/billing', billingRoutes);
+router.use('/usage', usageRoutes);
 
 export { router };
