@@ -5,6 +5,38 @@ import { redis } from '../config/redis';
 
 const router = Router();
 
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Returns basic health status of the API
+ *     tags: [Health]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 timestamp:
+ *                   type: string
+ *                   format: date-time
+ *                 uptime:
+ *                   type: number
+ *                   description: Server uptime in seconds
+ *                 environment:
+ *                   type: string
+ *                   example: production
+ *                 version:
+ *                   type: string
+ *                   example: 1.0.0
+ */
 router.get('/health', async (_req: Request, res: Response) => {
   const health = {
     status: 'ok',
@@ -17,6 +49,38 @@ router.get('/health', async (_req: Request, res: Response) => {
   return successResponse(res, health);
 });
 
+/**
+ * @swagger
+ * /health/ready:
+ *   get:
+ *     summary: Readiness check endpoint
+ *     description: Returns readiness status including database and Redis connectivity
+ *     tags: [Health]
+ *     security: []
+ *     responses:
+ *       200:
+ *         description: Service is ready
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 database:
+ *                   type: string
+ *                   example: connected
+ *                 redis:
+ *                   type: string
+ *                   example: connected
+ *                 ready:
+ *                   type: boolean
+ *                   example: true
+ *       503:
+ *         description: Service is not ready
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ */
 router.get('/health/ready', async (_req: Request, res: Response) => {
   try {
     // Check database connection

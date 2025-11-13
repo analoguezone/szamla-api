@@ -18,10 +18,54 @@ import { signupRateLimiter } from '@middleware/rate-limit.middleware';
 const router = Router();
 
 /**
- * @route   GET /api/v1/organizations
- * @desc    List organizations (admin only - for now)
- * @access  Protected (admin)
- * @query   skip, take, status, search
+ * @swagger
+ * /organizations:
+ *   get:
+ *     summary: List all organizations
+ *     description: Returns a paginated list of organizations (admin only)
+ *     tags: [Organizations]
+ *     parameters:
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *         description: Number of records to skip for pagination
+ *       - in: query
+ *         name: take
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of records to return
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, suspended, deleted]
+ *         description: Filter by organization status
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by organization name or tax number
+ *     responses:
+ *       200:
+ *         description: Organizations retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 organizations:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Organization'
+ *                 total:
+ *                   type: integer
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
  */
 router.get(
   '/',
@@ -31,11 +75,71 @@ router.get(
 );
 
 /**
- * @route   POST /api/v1/organizations
- * @desc    Create a new organization
- * @access  Public (for initial signup) or Admin
- * @body    CreateOrganizationInput
- * @ratelimit 5 signups per 15 minutes per IP
+ * @swagger
+ * /organizations:
+ *   post:
+ *     summary: Create a new organization
+ *     description: Register a new organization (public endpoint for signup)
+ *     tags: [Organizations]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - taxNumber
+ *               - address
+ *               - city
+ *               - postalCode
+ *               - email
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: Példa Kft.
+ *               taxNumber:
+ *                 type: string
+ *                 pattern: ^\d{8}$
+ *                 example: "12345678"
+ *               address:
+ *                 type: string
+ *                 example: Fő utca 1.
+ *               city:
+ *                 type: string
+ *                 example: Budapest
+ *               postalCode:
+ *                 type: string
+ *                 example: "1011"
+ *               country:
+ *                 type: string
+ *                 default: HU
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: info@example.hu
+ *               phone:
+ *                 type: string
+ *                 example: "+36 1 234 5678"
+ *               bankAccountNumber:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Organization created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 organization:
+ *                   $ref: '#/components/schemas/Organization'
+ *                 apiKey:
+ *                   $ref: '#/components/schemas/ApiKey'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       429:
+ *         $ref: '#/components/responses/TooManyRequests'
  */
 router.post(
   '/',
@@ -44,10 +148,33 @@ router.post(
 );
 
 /**
- * @route   GET /api/v1/organizations/:id
- * @desc    Get organization by ID
- * @access  Protected (organization owner)
- * @param   id - Organization UUID
+ * @swagger
+ * /organizations/{id}:
+ *   get:
+ *     summary: Get organization by ID
+ *     description: Returns organization details for the specified ID
+ *     tags: [Organizations]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Organization UUID
+ *     responses:
+ *       200:
+ *         description: Organization retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Organization'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       403:
+ *         $ref: '#/components/responses/Forbidden'
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
  */
 router.get(
   '/:id',

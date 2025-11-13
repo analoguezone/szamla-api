@@ -29,21 +29,123 @@ router.use(authenticate);
 router.get('/stats', requireInvoicesRead, invoiceController.getInvoiceStats.bind(invoiceController));
 
 /**
- * @route   GET /api/v1/invoices
- * @desc    List all invoices for authenticated organization
- * @access  Protected (invoices:read scope)
- * @query   skip, take, partnerId, status, paymentStatus, navStatus, issueDateFrom, issueDateTo,
- *          dueDateFrom, dueDateTo, invoiceNumber, search, invoiceType, currency, isStorned
+ * @swagger
+ * /invoices:
+ *   get:
+ *     summary: List all invoices
+ *     description: Returns a paginated list of invoices for the authenticated organization
+ *     tags: [Invoices]
+ *     parameters:
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *       - in: query
+ *         name: take
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: partnerId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: navStatus
+ *         schema:
+ *           type: string
+ *           enum: [draft, pending, submitted, failed]
+ *       - in: query
+ *         name: invoiceType
+ *         schema:
+ *           type: string
+ *           enum: [normal, proforma, deposit, final, corrective, storno]
+ *     responses:
+ *       200:
+ *         description: Invoices retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 invoices:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Invoice'
+ *                 total:
+ *                   type: integer
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *   post:
+ *     summary: Create a new invoice
+ *     description: Create a new invoice (deducts 1 credit from organization balance)
+ *     tags: [Invoices]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - partnerId
+ *               - invoiceType
+ *               - issuedAt
+ *               - dueAt
+ *               - paymentMethod
+ *               - items
+ *             properties:
+ *               partnerId:
+ *                 type: string
+ *                 format: uuid
+ *               invoiceType:
+ *                 type: string
+ *                 enum: [normal, proforma, deposit, final, corrective]
+ *               issuedAt:
+ *                 type: string
+ *                 format: date-time
+ *               dueAt:
+ *                 type: string
+ *                 format: date-time
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: [cash, transfer, card, other]
+ *               currency:
+ *                 type: string
+ *                 default: HUF
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - description
+ *                     - quantity
+ *                     - unitPrice
+ *                     - vatRate
+ *                   properties:
+ *                     description:
+ *                       type: string
+ *                     quantity:
+ *                       type: number
+ *                     unitPrice:
+ *                       type: number
+ *                     vatRate:
+ *                       type: number
+ *     responses:
+ *       201:
+ *         description: Invoice created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Invoice'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       429:
+ *         $ref: '#/components/responses/TooManyRequests'
  */
 router.get('/', requireInvoicesRead, invoiceController.listInvoices.bind(invoiceController));
-
-/**
- * @route   POST /api/v1/invoices
- * @desc    Create a new invoice (deducts 1 credit)
- * @access  Protected (invoices:write scope)
- * @body    CreateInvoiceInput (including multi-currency, EU VAT codes)
- * @ratelimit 60 requests per minute per IP
- */
 router.post('/', standardRateLimiter, requireInvoicesWrite, invoiceController.createInvoice.bind(invoiceController));
 
 /**

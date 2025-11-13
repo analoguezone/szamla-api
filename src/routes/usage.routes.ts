@@ -17,17 +17,57 @@ const router = Router();
 router.use(authenticate);
 
 /**
- * @route   GET /api/v1/usage/current
- * @desc    Get current period usage (current month)
- * @access  Protected (organization owner)
+ * @swagger
+ * /usage/current:
+ *   get:
+ *     summary: Get current period usage
+ *     description: Returns usage statistics for the current month
+ *     tags: [Usage]
+ *     responses:
+ *       200:
+ *         description: Current usage retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UsageStats'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get('/current', usageController.getCurrentUsage.bind(usageController));
 
 /**
- * @route   GET /api/v1/usage/stats
- * @desc    Get usage statistics for date range
- * @access  Protected (organization owner)
- * @query   fromDate, toDate (ISO 8601 datetime strings)
+ * @swagger
+ * /usage/stats:
+ *   get:
+ *     summary: Get usage statistics for date range
+ *     description: Returns aggregated usage statistics for a specified date range
+ *     tags: [Usage]
+ *     parameters:
+ *       - in: query
+ *         name: fromDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Start date (ISO 8601)
+ *       - in: query
+ *         name: toDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: End date (ISO 8601)
+ *     responses:
+ *       200:
+ *         description: Usage statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UsageStats'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  */
 router.get('/stats', usageController.getUsageStats.bind(usageController));
 
