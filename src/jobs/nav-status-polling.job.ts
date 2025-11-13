@@ -26,12 +26,12 @@ const POLLING_DELAYS = [5000, 10000, 15000, 30000, 60000]; // Progressive delays
 async function processNAVStatusPolling(job: Job<NAVStatusPollingJobData>): Promise<void> {
   const { invoiceId, organizationId, transactionId, attempt } = job.data;
 
-  logger.info(`Polling NAV status for invoice ${invoiceId}`, {
+  logger.info({
     jobId: job.id,
     invoiceId,
     transactionId,
     attempt,
-  });
+  }, `Polling NAV status for invoice ${invoiceId}`);
 
   try {
     // Query transaction status from NAV
@@ -39,11 +39,11 @@ async function processNAVStatusPolling(job: Job<NAVStatusPollingJobData>): Promi
 
     if (status.status === 'DONE') {
       // Transaction completed successfully
-      logger.info(`NAV transaction completed successfully: ${transactionId}`, {
+      logger.info({
         jobId: job.id,
         invoiceId,
         transactionId,
-      });
+      }, `NAV transaction completed successfully: ${transactionId}`);
 
       await db.invoice.update({
         where: { id: invoiceId },
@@ -54,12 +54,12 @@ async function processNAVStatusPolling(job: Job<NAVStatusPollingJobData>): Promi
       });
     } else if (status.status === 'ABORTED' || status.status === 'FAILED') {
       // Transaction failed
-      logger.error(`NAV transaction failed: ${transactionId}`, {
+      logger.error({
         jobId: job.id,
         invoiceId,
         transactionId,
         error: status.errorMessage,
-      });
+      }, `NAV transaction failed: ${transactionId}`);
 
       await db.invoice.update({
         where: { id: invoiceId },
@@ -71,11 +71,11 @@ async function processNAVStatusPolling(job: Job<NAVStatusPollingJobData>): Promi
     } else if (status.status === 'PROCESSING' || status.status === 'PENDING') {
       // Still processing - schedule another poll
       if (attempt >= MAX_POLLING_ATTEMPTS) {
-        logger.warn(`Max polling attempts reached for NAV transaction: ${transactionId}`, {
+        logger.warn({
           jobId: job.id,
           invoiceId,
           transactionId,
-        });
+        }, `Max polling attempts reached for NAV transaction: ${transactionId}`);
 
         await db.invoice.update({
           where: { id: invoiceId },
@@ -101,22 +101,22 @@ async function processNAVStatusPolling(job: Job<NAVStatusPollingJobData>): Promi
           { delay }
         );
 
-        logger.info(`Scheduled next NAV status poll for invoice ${invoiceId}`, {
+        logger.info({
           jobId: job.id,
           invoiceId,
           nextAttempt: attempt + 1,
           delay,
-        });
+        }, `Scheduled next NAV status poll for invoice ${invoiceId}`);
       }
     }
   } catch (error: any) {
-    logger.error(`Failed to poll NAV status for invoice ${invoiceId}`, {
+    logger.error({
       jobId: job.id,
       invoiceId,
       transactionId,
       error: error.message,
       stack: error.stack,
-    });
+    }, `Failed to poll NAV status for invoice ${invoiceId}`);
 
     // Retry polling if not exceeded max attempts
     if (attempt < MAX_POLLING_ATTEMPTS) {

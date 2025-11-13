@@ -34,40 +34,40 @@ class WorkerManager {
       // Setup event handlers for all workers
       this.workers.forEach((worker) => {
         worker.on('completed', (job) => {
-          logger.info(`Job completed: ${job.name}`, {
+          logger.info({
             jobId: job.id,
             queue: worker.name,
-          });
+          }, `Job completed: ${job.name}`);
         });
 
         worker.on('failed', (job, error) => {
-          logger.error(`Job failed: ${job?.name}`, {
+          logger.error({
             jobId: job?.id,
             queue: worker.name,
             error: error.message,
             stack: error.stack,
-          });
+          }, `Job failed: ${job?.name}`);
         });
 
         worker.on('error', (error) => {
-          logger.error(`Worker error in queue: ${worker.name}`, {
+          logger.error({
             queue: worker.name,
             error: error.message,
             stack: error.stack,
-          });
+          }, `Worker error in queue: ${worker.name}`);
         });
       });
 
       this.isInitialized = true;
-      logger.info('Background workers initialized successfully', {
+      logger.info({
         workerCount: this.workers.length,
         queues: this.workers.map((w) => w.name),
-      });
+      }, 'Background workers initialized successfully');
     } catch (error: any) {
-      logger.error('Failed to initialize workers', {
+      logger.error({
         error: error.message,
         stack: error.stack,
-      });
+      }, 'Failed to initialize workers');
       throw error;
     }
   }
@@ -91,10 +91,10 @@ class WorkerManager {
 
       logger.info('Background workers closed successfully');
     } catch (error: any) {
-      logger.error('Error closing workers', {
+      logger.error({
         error: error.message,
         stack: error.stack,
-      });
+      }, 'Error closing workers');
       throw error;
     }
   }

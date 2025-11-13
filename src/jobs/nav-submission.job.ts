@@ -22,23 +22,23 @@ export interface NAVSubmissionJobData {
 async function processNAVSubmission(job: Job<NAVSubmissionJobData>): Promise<void> {
   const { invoiceId, organizationId, operation } = job.data;
 
-  logger.info(`Submitting invoice to NAV: ${invoiceId}`, {
+  logger.info({
     jobId: job.id,
     invoiceId,
     organizationId,
     operation,
-  });
+  }, `Submitting invoice to NAV: ${invoiceId}`);
 
   try {
     // Submit invoice to NAV
     const result = await navService.submitInvoice(invoiceId, operation);
 
-    logger.info(`Invoice submitted to NAV successfully: ${invoiceId}`, {
+    logger.info({
       jobId: job.id,
       invoiceId,
       transactionId: result.transactionId,
       status: result.status,
-    });
+    }, `Invoice submitted to NAV successfully: ${invoiceId}`);
 
     // Schedule status polling job with delay
     const { queueService } = await import('@services/queue.service');
@@ -55,12 +55,12 @@ async function processNAVSubmission(job: Job<NAVSubmissionJobData>): Promise<voi
       }
     );
   } catch (error: any) {
-    logger.error(`Failed to submit invoice to NAV: ${invoiceId}`, {
+    logger.error({
       jobId: job.id,
       invoiceId,
       error: error.message,
       stack: error.stack,
-    });
+    }, `Failed to submit invoice to NAV: ${invoiceId}`);
 
     // Update invoice NAV status to failed
     await db.invoice.update({
