@@ -1,59 +1,53 @@
 import { createApp } from './app';
 import { config } from './config';
 import { logger } from './config/logger';
-import { connectDatabase, disconnectDatabase } from './config/database';
-import { connectRedis, disconnectRedis } from './config/redis';
+import { connectDatabase } from './config/database';
+import { connectRedis } from './config/redis';
+import { validateEnvironment, maskSensitiveEnvVars } from './utils/env-validator';
+import { setupGracefulShutdown } from './utils/graceful-shutdown';
+import { workerManager } from './jobs';
 
 async function bootstrap() {
   try {
+    // Validate environment variables
+    logger.info('Validating environment configuration');
+    validateEnvironment();
+    logger.info('Environment validation passed');
+
+    // Log masked environment variables (for debugging)
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug({ env: maskSensitiveEnvVars() }, 'Environment configuration');
+    }
+
     // Connect to database
     await connectDatabase();
 
     // Connect to Redis
     await connectRedis();
 
+    // Initialize background workers
+    logger.info('Initializing background job workers');
+    await workerManager.initialize();
+    logger.info('Background workers initialized');
+
     // Create Express app
     const app = createApp();
 
-    // Start server
+    // Start HTTP server
     const server = app.listen(config.port, () => {
       logger.info(
         {
           port: config.port,
           env: config.env,
           apiBaseUrl: config.apiBaseUrl,
+          node: process.version,
         },
         'Server started successfully'
       );
     });
 
-    // Graceful shutdown
-    const gracefulShutdown = async (signal: string) => {
-      logger.info(`${signal} received, shutting down gracefully`);
-
-      server.close(async () => {
-        logger.info('HTTP server closed');
-
-        try {
-          await disconnectDatabase();
-          await disconnectRedis();
-          logger.info('All connections closed');
-          process.exit(0);
-        } catch (error) {
-          logger.error({ error }, 'Error during shutdown');
-          process.exit(1);
-        }
-      });
-
-      // Force shutdown after 30 seconds
-      setTimeout(() => {
-        logger.error('Forced shutdown after timeout');
-        process.exit(1);
-      }, 30000);
-    };
-
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    // Setup graceful shutdown handlers
+    setupGracefulShutdown(server);
   } catch (error) {
     logger.error({ error }, 'Failed to start server');
     process.exit(1);
